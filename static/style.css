@@ -1,0 +1,129 @@
+/* Custom styles for YouTube Slide Extractor */
+
+.processing-step {
+    transition: all 0.3s ease;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    opacity: 0.5;
+}
+
+.processing-step.active {
+    opacity: 1;
+    background-color: var(--bs-primary-bg-subtle);
+    border: 2px solid var(--bs-primary);
+    transform: scale(1.05);
+}
+
+.processing-step.completed {
+    opacity: 1;
+    background-color: var(--bs-success-bg-subtle);
+    border: 2px solid var(--bs-success);
+}
+
+.processing-step.completed i {
+    color: var(--bs-success);
+}
+
+.processing-step.active i {
+    color: var(--bs-primary);
+}
+
+/* Progress bar animations */
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+/* Card hover effects */
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Button loading state */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .display-5 {
+        font-size: 1.75rem;
+    }
+    
+    .card-body {
+        padding: 2rem !important;
+    }
+}
+
+/* Alert custom styling */
+.alert {
+    border: none;
+    border-radius: 0.75rem;
+}
+
+/* Form enhancements */
+.form-control-lg {
+    border-radius: 0.75rem;
+}
+
+.btn-lg {
+    border-radius: 0.75rem;
+    padding: 0.75rem 2rem;
+}
+
+/* Loading spinner enhancement */
+.spinner-border {
+    border-width: 0.25em;
+}
+
+/* Success/Error icons */
+.fa-check-circle,
+.fa-exclamation-triangle {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bs-gray-800);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bs-gray-600);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-gray-500);
+}
