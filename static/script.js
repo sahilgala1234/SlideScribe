@@ -52,6 +52,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 5000);
         }
     });
+
+    // Handle demo URL buttons
+    const demoButtons = document.querySelectorAll('.demo-url');
+    demoButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            if (youtubeUrlInput) {
+                youtubeUrlInput.value = url;
+                youtubeUrlInput.dispatchEvent(new Event('input')); // Trigger validation
+                
+                // Smooth scroll to form
+                youtubeUrlInput.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                
+                // Focus input field
+                setTimeout(() => {
+                    youtubeUrlInput.focus();
+                }, 500);
+            }
+        });
+    });
 });
 
 /**

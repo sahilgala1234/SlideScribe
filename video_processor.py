@@ -1,7 +1,7 @@
 import os
 import cv2
 import numpy as np
-from pytube import YouTube
+from pytubefix import YouTube
 import tempfile
 import logging
 from fpdf import FPDF
@@ -29,28 +29,74 @@ class VideoProcessor:
             raise ValueError("Invalid YouTube URL format")
         
         try:
+            # Create YouTube object using pytubefix
             yt = YouTube(youtube_url)
+            
             logging.info(f"Video title: {yt.title}")
             
-            # Get the highest resolution stream available
-            stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+            # Try multiple stream options in order of preference
+            stream = None
+            
+            # First try: Progressive streams (video + audio together)
+            progressive_streams = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc()
+            if progressive_streams:
+                stream = progressive_streams.first()
+                if stream:
+                    logging.info(f"Using progressive stream: {stream.resolution}")
+            
+            # Second try: Adaptive video streams (video only)
+            if not stream:
+                adaptive_streams = yt.streams.filter(adaptive=True, file_extension='mp4', only_video=True).order_by('resolution').desc()
+                if adaptive_streams:
+                    stream = adaptive_streams.first()
+                    if stream:
+                        logging.info(f"Using adaptive video stream: {stream.resolution}")
+            
+            # Third try: Any mp4 stream
+            if not stream:
+                any_streams = yt.streams.filter(file_extension='mp4').order_by('resolution').desc()
+                if any_streams:
+                    stream = any_streams.first()
+                    if stream:
+                        logging.info(f"Using fallback stream: {stream.resolution}")
+            
+            # Fourth try: Any video stream
+            if not stream:
+                video_streams = yt.streams.filter(only_video=True).order_by('resolution').desc()
+                if video_streams:
+                    stream = video_streams.first()
+                    if stream:
+                        logging.info(f"Using any video stream: {stream.resolution}")
             
             if not stream:
-                # Fallback to adaptive streams if no progressive streams available
-                stream = yt.streams.filter(adaptive=True, file_extension='mp4', only_video=True).order_by('resolution').desc().first()
-            
-            if not stream:
-                raise ValueError("No suitable video stream found")
+                raise ValueError("No suitable video stream found. This video may be restricted or unavailable.")
             
             video_path = os.path.join(self.temp_dir, 'video.mp4')
-            stream.download(output_path=self.temp_dir, filename='video.mp4')
+            
+            # Download with error handling
+            try:
+                stream.download(output_path=self.temp_dir, filename='video.mp4')
+            except Exception as download_error:
+                logging.error(f"Download failed: {str(download_error)}")
+                raise ValueError(f"Failed to download video stream: {str(download_error)}")
+            
+            # Verify file was downloaded
+            if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
+                raise ValueError("Downloaded video file is empty or missing")
             
             update_callback('downloading', 30, 'Video downloaded successfully')
             return video_path
             
         except Exception as e:
             logging.error(f"Error downloading video: {str(e)}")
-            raise ValueError(f"Failed to download video: {str(e)}")
+            if "HTTP Error 400" in str(e):
+                raise ValueError("YouTube blocked the download request. This video may be age-restricted, private, or have download restrictions.")
+            elif "HTTP Error 403" in str(e):
+                raise ValueError("Access to this video is forbidden. The video may be private or restricted.")
+            elif "HTTP Error 404" in str(e):
+                raise ValueError("Video not found. Please check the URL and try again.")
+            else:
+                raise ValueError(f"Failed to download video: {str(e)}")
     
     def extract_frames(self, video_path, update_callback):
         """Extract frames from video at regular intervals"""
