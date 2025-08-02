@@ -114,7 +114,7 @@ class VideoProcessor:
         logging.info(f"Video duration: {duration:.2f} seconds, FPS: {fps}, Total frames: {frame_count}")
         
         frames = []
-        frame_interval = max(1, int(fps * 2))  # Extract one frame every 2 seconds
+        frame_interval = max(1, int(fps * 1))  # Extract one frame every 1 second for better coverage
         
         frame_number = 0
         while True:
@@ -143,7 +143,7 @@ class VideoProcessor:
             return []
         
         unique_slides = []
-        similarity_threshold = 0.85  # Adjust this value to fine-tune slide detection
+        similarity_threshold = 0.92  # Balanced threshold for better detection
         
         for i, (frame_num, frame) in enumerate(frames):
             is_unique = True
@@ -151,16 +151,24 @@ class VideoProcessor:
             # Convert frame to grayscale for comparison
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             
-            # Compare with existing unique slides
-            for _, existing_gray in unique_slides:
-                similarity = self.calculate_frame_similarity(gray_frame, existing_gray)
-                if similarity > similarity_threshold:
-                    is_unique = False
-                    break
-            
-            if is_unique:
+            # If this is the first frame, always add it
+            if len(unique_slides) == 0:
                 unique_slides.append((frame, gray_frame))
-                logging.info(f"Found unique slide at frame {frame_num}")
+                logging.info(f"Found unique slide at frame {frame_num} (first frame)")
+            else:
+                # Compare with existing unique slides
+                max_similarity = 0
+                for _, existing_gray in unique_slides:
+                    similarity = self.calculate_frame_similarity(gray_frame, existing_gray)
+                    max_similarity = max(max_similarity, similarity)
+                    
+                    if similarity > similarity_threshold:
+                        is_unique = False
+                        break
+                
+                if is_unique:
+                    unique_slides.append((frame, gray_frame))
+                    logging.info(f"Found unique slide at frame {frame_num} (similarity: {max_similarity:.3f})")
             
             # Update progress
             progress = 60 + int((i / len(frames)) * 20)
@@ -170,7 +178,7 @@ class VideoProcessor:
         return [slide[0] for slide in unique_slides]  # Return only the color frames
     
     def calculate_frame_similarity(self, frame1, frame2):
-        """Calculate similarity between two grayscale frames using histogram comparison"""
+        """Calculate similarity between two grayscale frames using multiple methods"""
         # Resize frames to same size if different
         if frame1.shape != frame2.shape:
             height = min(frame1.shape[0], frame2.shape[0])
@@ -178,13 +186,23 @@ class VideoProcessor:
             frame1 = cv2.resize(frame1, (width, height))
             frame2 = cv2.resize(frame2, (width, height))
         
-        # Calculate histograms
+        # Method 1: Histogram comparison
         hist1 = cv2.calcHist([frame1], [0], None, [256], [0, 256])
         hist2 = cv2.calcHist([frame2], [0], None, [256], [0, 256])
+        hist_similarity = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
         
-        # Compare histograms using correlation
-        similarity = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
-        return similarity
+        # Method 2: Structural similarity (template matching)
+        result = cv2.matchTemplate(frame1, frame2, cv2.TM_CCOEFF_NORMED)
+        template_similarity = np.max(result)
+        
+        # Method 3: Mean squared difference (inverted to similarity)
+        mse = np.mean((frame1.astype(float) - frame2.astype(float)) ** 2)
+        mse_similarity = 1.0 / (1.0 + mse / 10000.0)  # Normalize MSE to similarity
+        
+        # Combine all methods (weighted average)
+        combined_similarity = (hist_similarity * 0.4 + template_similarity * 0.4 + mse_similarity * 0.2)
+        
+        return combined_similarity
     
     def generate_pdf(self, slides, update_callback):
         """Generate PDF from slide images"""
